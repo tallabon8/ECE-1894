@@ -15,6 +15,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         #deals with initializing to 00:00:00, for time since water refill
         self.timerResetCountWater = []
+        self.timerResetCountFood = []
         #push_Button_3 is the refill water button
         self.sys_time_label.setText("00:00:00") #time since water fill
         self.sys_time_label_3.setText("00:00:00") #24hr average time since water fill
@@ -31,9 +32,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sysTimeUpdateTimer.timeout.connect(self.incrementSysTimeLabel_2)
         self.sysTimeUpdateTimer.start(1000)
         #check for refill water
-        self.pushButton_3.clicked.connect(self.startRefillWater)
+        self.pushButton_3.clicked.connect(self.calculateDisplayAvgWater)
         #check for refill food
-        self.pushButton_2.clicked.connect(self.startRefillFood)
+        self.pushButton_2.clicked.connect(self.calculateDisplayAvgFood)
         #updating Zigbee Devices
         self.pushButton_5.clicked.connect(self.addItemToListView)
         self.model = QStandardItemModel(self.listView)
@@ -47,6 +48,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Connect the clickable labels to functions
         self.ebrake_fail_on.clicked.connect(self.lightsOn)
         self.ebrake_fail_off.clicked.connect(self.lightsOff)
+
+        self.recordValueTimer = QTimer(self)
+        self.recordValueTimer.timeout.connect(self.recordLcdNumber2Value)
+        self.recordValueTimer.start(10000) 
 
     def incrementSysTimeLabel(self):
         # Increment the elapsed time by 1 second
@@ -88,7 +93,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         averageTime = QTime(0, 0, 0).addSecs(int(averageSeconds))
         self.sys_time_label_3.setText(averageTime.toString("hh:mm:ss"))
         return averageTime  # Return the calculated average time
-    
+
     def calculateDisplayAvgFood(self):
         if not self.timerResetCountFood:
             self.sys_time_label_4.setText("00:00:00")
@@ -160,7 +165,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     
     def resetLcdNumber2(self):
         self.lcdNumber_2.display(0)
-    
+
+    def recordLcdNumber2Value(self):
+            current_value = self.lcdNumber_2.value()
+            current_time = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+            self.saveLcdNumber2ValueToCsv(current_time, current_value)
+
+    def saveLcdNumber2ValueToCsv(self, timestamp, value):
+        file_name = "egg_count.csv"
+        # Open the file in append mode, create if does not exist
+        with open(file_name, 'a', newline='') as file:
+            writer = csv.writer(file)
+            # Write the data
+            writer.writerow([timestamp, value])
+        
     def toggleSysTimeLabelUpdate(self, shouldUpdate):
         self.updateSysTimeLabel = shouldUpdate
         if not shouldUpdate:
