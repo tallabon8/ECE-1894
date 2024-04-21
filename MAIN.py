@@ -52,9 +52,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.recordValueTimer = QTimer(self)
         self.recordValueTimer.timeout.connect(self.recordLcdNumber2Value)
         self.recordValueTimer.start(3600000) 
-        self.recordValueTimer2 = QTimer(self)
-        self.recordValueTimer.timeout.connect(self.recordLcdNumber2Value)
-        self.recordValueTimer.start(3600000) 
+        self.waterRecordTimer = QTimer(self)
+        self.waterRecordTimer.timeout.connect(self.recordWaterAverage)
+        self.waterRecordTimer.start(10000)
+
+        self.foodRecordTimer = QTimer(self)
+        self.foodRecordTimer.timeout.connect(self.recordFoodAverage)
+        self.foodRecordTimer.start(10000)
+        
         self.lcdNumber.display(25) #default value for 
         self.lcdNumber_5.display(72.8) #default value for humidity
         self.lcdNumber_3.display(0) #default value for water purity
@@ -98,6 +103,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         totalFoodTime = sum(self.foodResetTimes)
         averageFoodTime = totalFoodTime / len(self.foodResetTimes)
         self.sys_time_label_4.setText(str(QTime(0, 0, 0).addSecs(int(averageFoodTime)).toString("hh:mm:ss")))
+
+    def recordWaterAverage(self):
+        self.waterResetTimes = []
+        self.waterResetTimes.append(self.elapsedSeconds)
+        self.elapsedSeconds = 0
+        average_water_time = sum(self.waterResetTimes) / len(self.waterResetTimes)
+        current_time = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+        self.saveWaterAverageToCsv(current_time, average_water_time)
+
+    def recordFoodAverage(self):
+        self.foodResetTimes = []
+        self.foodResetTimes.append(self.elapsedSeconds_2)
+        self.elapsedSeconds_2 = 0
+        average_food_time = sum(self.foodResetTimes) / len(self.foodResetTimes)
+        current_time = QDateTime.currentDateTime().toString("yyyy-MM-dd HH:mm:ss")
+        self.saveFoodAverageToCsv(current_time, average_food_time)
+
+    def saveWaterAverageToCsv(self, timestamp, value):
+        file_name = "water_average.csv"
+        with open(file_name, 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([timestamp, value])
+
+    def saveFoodAverageToCsv(self, timestamp, value):
+        file_name = "food_average.csv"
+        with open(file_name, 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([timestamp, value])
 
     def convertToClickableLabel(self, label):
         clickable_label = ClickableLabel(label.parent())
