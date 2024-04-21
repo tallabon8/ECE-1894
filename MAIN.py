@@ -16,6 +16,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #deals with initializing to 00:00:00, for time since water refill
         self.timerResetCountWater = []
         self.timerResetCountFood = []
+        self.waterResetTimes = []
+        self.foodResetTimes = []
         #push_Button_3 is the refill water button
         self.sys_time_label.setText("00:00:00") #time since water fill
         self.sys_time_label_3.setText("00:00:00") #24hr average time since water fill
@@ -52,6 +54,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.recordValueTimer = QTimer(self)
         self.recordValueTimer.timeout.connect(self.recordLcdNumber2Value)
         self.recordValueTimer.start(10000) 
+        self.lcdNumber.display(25) #default value for 
+        self.lcdNumber_5.display(72.8) #default value for humidity
+        self.lcdNumber_3.display(0) #default value for water purity
 
     def incrementSysTimeLabel(self):
         # Increment the elapsed time by 1 second
@@ -77,41 +82,43 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return averageTime
 
     def startRefillWater(self):
+        self.waterResetTimes.append(self.sys_time_label.text())
         self.sys_time_label_3.setText("00:00:00")
 
     def calculateDisplayAvgWater(self):
-        if not self.timerResetCountWater:
+        if not self.waterResetTimes:
             self.sys_time_label_3.setText("00:00:00")
-            return QTime(0, 0, 0)  # Return default QTime if list is empty
+            return
         
         totalSeconds = 0
-        for time in self.timerResetCountWater:
-            secondsSinceMidnight = QTime(0, 0, 0).secsTo(time.time())
-            totalSeconds += secondsSinceMidnight
+        for time in self.waterResetTimes:
+            h, m, s = map(int, time.split(':'))
+            totalSeconds += h * 3600 + m * 60 + s
         
-        averageSeconds = totalSeconds / len(self.timerResetCountWater)
-        averageTime = QTime(0, 0, 0).addSecs(int(averageSeconds))
-        self.sys_time_label_3.setText(averageTime.toString("hh:mm:ss"))
-        return averageTime  # Return the calculated average time
+        averageSeconds = totalSeconds / len(self.waterResetTimes)
+        h, m, s = averageSeconds // 3600, (averageSeconds // 60) % 60, averageSeconds % 60
+        averageTime = "{:02d}:{:02d}:{:02d}".format(h, m, s)
+        self.sys_time_label_3.setText(averageTime)
 
     def calculateDisplayAvgFood(self):
-        if not self.timerResetCountFood:
+        if not self.foodResetTimes:
             self.sys_time_label_4.setText("00:00:00")
-            return QTime(0, 0, 0)  # Return default QTime if list is empty
+            return
         
         totalSeconds = 0
-        for time in self.timerResetCountFood:
-            secondsSinceMidnight = QTime(0, 0, 0).secsTo(time.time())
-            totalSeconds += secondsSinceMidnight
+        for time in self.foodResetTimes:
+            h, m, s = map(int, time.split(':'))
+            totalSeconds += h * 3600 + m * 60 + s
         
-        averageSeconds = totalSeconds / len(self.timerResetCountFood)
-        averageTime = QTime(0, 0, 0).addSecs(int(averageSeconds))
-        self.sys_time_label_4.setText(averageTime.toString("hh:mm:ss"))
-        return averageTime  # Return the calculated average time
+        averageSeconds = totalSeconds / len(self.foodResetTimes)
+        h, m, s = averageSeconds // 3600, (averageSeconds // 60) % 60, averageSeconds % 60
+        averageTime = "{:02d}:{:02d}:{:02d}".format(h, m, s)
+        self.sys_time_label_4.setText(averageTime)
 
     def startRefillFood(self):
+        self.foodResetTimes.append(self.sys_time_label_2.text())
         self.sys_time_label_4.setText("00:00:00")
-        
+            
     def msecs(self, time):
         return ((time.hour() * 3600) + (time.minute() * 60) + time.second()) * 1000 + time.msec()
 
