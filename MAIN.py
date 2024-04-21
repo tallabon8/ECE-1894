@@ -14,14 +14,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
         #deals with initializing to 00:00:00, for time since water refill
-        self.timerResetCountWater = []
-        self.timerResetCountFood = []
         self.waterResetTimes = []
         self.foodResetTimes = []
         #push_Button_3 is the refill water button
         self.sys_time_label.setText("00:00:00") #time since water fill
         self.sys_time_label_3.setText("00:00:00") #24hr average time since water fill
-        self.elapsedSeconds = 0
+        self.elapsedSeconds = 0  
         self.sysTimeUpdateTimer = QTimer(self)
         self.sysTimeUpdateTimer.timeout.connect(self.incrementSysTimeLabel)
         self.sysTimeUpdateTimer.start(1000)
@@ -34,9 +32,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sysTimeUpdateTimer.timeout.connect(self.incrementSysTimeLabel_2)
         self.sysTimeUpdateTimer.start(1000)
         #check for refill water
-        self.pushButton_3.clicked.connect(self.calculateDisplayAvgWater)
+        self.pushButton_3.clicked.connect(self.on_pushButton_3_clicked) #i need to implement this portion
         #check for refill food
-        self.pushButton_2.clicked.connect(self.calculateDisplayAvgFood)
+        self.pushButton_2.clicked.connect(self.on_pushButton_2_clicked) #i need to implement this portion
         #updating Zigbee Devices
         self.pushButton_5.clicked.connect(self.addItemToListView)
         self.model = QStandardItemModel(self.listView)
@@ -53,7 +51,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.recordValueTimer = QTimer(self)
         self.recordValueTimer.timeout.connect(self.recordLcdNumber2Value)
-        self.recordValueTimer.start(10000) 
+        self.recordValueTimer.start(3600000) 
+        self.recordValueTimer2 = QTimer(self)
+        self.recordValueTimer.timeout.connect(self.recordLcdNumber2Value)
+        self.recordValueTimer.start(3600000) 
         self.lcdNumber.display(25) #default value for 
         self.lcdNumber_5.display(72.8) #default value for humidity
         self.lcdNumber_3.display(0) #default value for water purity
@@ -65,98 +66,38 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         timeToDisplay = QTime(0, 0, 0).addSecs(self.elapsedSeconds)
         # Update the sys_time_label with the new time
         self.sys_time_label.setText(timeToDisplay.toString("hh:mm:ss"))
-
     def incrementSysTimeLabel_2(self):
         self.elapsedSeconds_2 += 1
         # Calculate the new time to display
         timeToDisplay = QTime(0, 0, 0).addSecs(self.elapsedSeconds_2)
         # Update the sys_time_label with the new time
         self.sys_time_label_2.setText(timeToDisplay.toString("hh:mm:ss"))
-    def calculateAverageTime(self):
-        totalSeconds = 0
-        for time in self.timerResetCountWater:
-            secondsSinceMidnight = QTime(0, 0, 0).secsTo(time.time())
-            totalSeconds += secondsSinceMidnight
-        averageSeconds = totalSeconds / len(self.timerResetCountWater)
-        averageTime = QTime(0, 0, 0).addSecs(int(averageSeconds))
-        return averageTime
 
-    def startRefillWater(self):
-        self.waterResetTimes.append(self.sys_time_label.text())
-        self.sys_time_label_3.setText("00:00:00")
+    def on_pushButton_3_clicked(self):
+        self.waterResetTimes.append(self.elapsedSeconds)
+        self.elapsedSeconds = 0
+        self.sys_time_label.setText("00:00:00")
+        self.calculateAverage()
 
-    def calculateDisplayAvgWater(self):
+    def on_pushButton_2_clicked(self):
+        self.foodResetTimes.append(self.elapsedSeconds_2)
+        self.elapsedSeconds_2 = 0
+        self.sys_time_label_2.setText("00:00:00")
+        self.calculateAverage()
+    
+    def calculateAverage(self):
         if not self.waterResetTimes:
             self.sys_time_label_3.setText("00:00:00")
             return
-        
-        totalSeconds = 0
-        for time in self.waterResetTimes:
-            h, m, s = map(int, time.split(':'))
-            totalSeconds += h * 3600 + m * 60 + s
-        
-        averageSeconds = totalSeconds / len(self.waterResetTimes)
-        h, m, s = averageSeconds // 3600, (averageSeconds // 60) % 60, averageSeconds % 60
-        averageTime = "{:02d}:{:02d}:{:02d}".format(h, m, s)
-        self.sys_time_label_3.setText(averageTime)
-
-    def calculateDisplayAvgFood(self):
+        totalWaterTime = sum(self.waterResetTimes)
+        averageWaterTime = totalWaterTime / len(self.waterResetTimes)
+        self.sys_time_label_3.setText(str(QTime(0, 0, 0).addSecs(int(averageWaterTime)).toString("hh:mm:ss")))
         if not self.foodResetTimes:
-            self.sys_time_label_4.setText("00:00:00")
+            self.sys_time_label_3.setText("00:00:00")
             return
-        
-        totalSeconds = 0
-        for time in self.foodResetTimes:
-            h, m, s = map(int, time.split(':'))
-            totalSeconds += h * 3600 + m * 60 + s
-        
-        averageSeconds = totalSeconds / len(self.foodResetTimes)
-        h, m, s = averageSeconds // 3600, (averageSeconds // 60) % 60, averageSeconds % 60
-        averageTime = "{:02d}:{:02d}:{:02d}".format(h, m, s)
-        self.sys_time_label_4.setText(averageTime)
-
-    def startRefillFood(self):
-        self.foodResetTimes.append(self.sys_time_label_2.text())
-        self.sys_time_label_4.setText("00:00:00")
-            
-    def msecs(self, time):
-        return ((time.hour() * 3600) + (time.minute() * 60) + time.second()) * 1000 + time.msec()
-
-    def updateRefillDuration(self):
-        # Calculate the duration since the last refill start
-        duration = self.lastRefillStartTime.secsTo(QDateTime.currentDateTime())
-        self.sys_time_label.setText(QTime(0, 0, 0).addSecs(duration).toString("hh:mm:ss"))
-        
-        # When button pressed again, update the average duration
-        self.refillDurations.append(duration)
-        #self.refillTimer.stop()  # Stop the timer until the next refill start
-        # Set default values for LCDs
-        self.lcdNumber.display(25)
-        self.lcdNumber_5.display(72.8)
-        self.lcdNumber_3.display(0)
-
-        # Flags to determine if sys_time_labels should be updated
-        self.updateSysTimeLabel = True
-        self.updateSysTimeLabel2 = True
-
-        # Connect button clicks to their respective functions
-        self.pushButton.clicked.connect(self.resetLcdNumber2)
-        self.pushButton_2.clicked.connect(self.calculateDisplayAvgFood)
-        self.pushButton_3.clicked.connect(self.calculateDisplayAvgWater)
-        self.pushButton_4.clicked.connect(self.incrementLcdNumber2)
-        
-        self.ebrake_fail_off = self.convertToClickableLabel(self.ebrake_fail_off)
-        self.ebrake_fail_on = self.convertToClickableLabel(self.ebrake_fail_on)
-
- 
-        
-        # Timer for updating sys_time_labels with time
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.updateTime)
-        self.timer.start(1000)  # milliseconds
-
-        # Initialize the model for listView and populate it
-        self.initializeListView()
+        totalFoodTime = sum(self.foodResetTimes)
+        averageFoodTime = totalFoodTime / len(self.foodResetTimes)
+        self.sys_time_label_4.setText(str(QTime(0, 0, 0).addSecs(int(averageFoodTime)).toString("hh:mm:ss")))
 
     def convertToClickableLabel(self, label):
         clickable_label = ClickableLabel(label.parent())
@@ -185,16 +126,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             writer = csv.writer(file)
             # Write the data
             writer.writerow([timestamp, value])
-        
-    def toggleSysTimeLabelUpdate(self, shouldUpdate):
-        self.updateSysTimeLabel = shouldUpdate
-        if not shouldUpdate:
-            self.sys_time_label.setText("00:00:00")
-    
-    def toggleSysTimeLabel2Update(self, shouldUpdate):
-        self.updateSysTimeLabel2 = shouldUpdate
-        if not shouldUpdate:
-            self.sys_time_label_2.setText(QDateTime.currentDateTime().toString("hh:mm:ss"))
 
     def lightsOff(self):
         print("Lights off")
